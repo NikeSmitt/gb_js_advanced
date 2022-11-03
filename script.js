@@ -1,27 +1,51 @@
+// initialization
+
+
+
+
+
 class GoodList {
-    constructor(container = '.good-list') {
+    constructor(basket, container = '.good-list') {
         this.container = container
-        this.rowGoods = []
+        this.rawGoods = []
         this.goodItems = []
-        this.$fetchGoods()
-        this.render()
+        this._fetchGoods()
+            .then(data => {
+                this.rawGoods = data
+                this.render()
+            })
+        this.basket = basket
 
 
     }
 
-    $fetchGoods() {
-        this.rowGoods = [
-            {id: 1, title: 'Shirt', price: 150},
-            {id: 2, title: 'Socks', price: 50},
-            {id: 3, title: 'Jacket', price: 350},
-            {id: 4, title: 'Shoes', price: 250},
-        ];
+    async _fetchGoods() {
+        try {
+            const result = await fetch("https://raw.githubusercontent.com/GeekBrainsTutorial/online-store-api/master/responses/catalogData.json")
+            return await result.json()
+        } catch (err) {
+            return console.log(data)
+        }
     }
 
     render() {
-        this.goodItems = this.rowGoods.map(item => new GoodItem(item));
+        this.goodItems = this.rawGoods.map(item => new GoodItem(item));
         let block = this.goodItems.map(item => item.render()).join(' ')
         document.querySelector('.goods-list').innerHTML = block
+
+        //кнопки добавления в корзину
+        const addBtns = document.querySelectorAll(".buy-button");
+        addBtns.forEach(btn => {
+            btn.onclick = (e) => {
+                const itemId = parseInt(e.target.dataset["id_product"])
+                // console.log(itemId)
+                console.log(e)
+                const itemToAdd = this.goodItems.filter(item => itemId === item.id_product)[0];
+                // console.log(itemToAdd)
+                this.basket.addGood(itemToAdd)
+
+            }
+        })
     }
 }
 
@@ -35,6 +59,7 @@ class Basket {
 
     addGood(goodItem) {
         this.goods.push(goodItem)
+        this.render()
     }
 
     removeGood(removeItem) {
@@ -50,11 +75,26 @@ class Basket {
     }
 
     getItemById(itemId) {
-        const foundItem = this.goods.filter(item => itemId === item.id);
+        const foundItem = this.goods.filter(item => itemId === item.id_product);
         if (foundItem.length === 1) {
             return foundItem[0]
         }
         console.log('Ошибка поиска нужного элемента!!!')
+    }
+
+    render() {
+        const basketBlock = document.querySelector(".basket-items")
+        const items = []
+        console.log(this.goods)
+        this.goods.forEach(good => {
+            const block = `<div class="item">
+                                <div class="item-name">${good.product_name}</div>
+                                <div class="item-price">${good.price}</div>
+                                <div class="item-quantity">1</div>
+                            </div>`
+            items.push(block)
+        })
+        basketBlock.innerHTML = items.join(' ')
     }
 
 }
@@ -62,47 +102,49 @@ class Basket {
 
 class GoodItem {
     constructor(item) {
-        this.id = item.id
-        this.title = item.title
+        this.id_product = item.id_product
+        this.product_name = item.product_name
         this.price = item.price
         this.description = item.description
         this.image = item.image
     }
 
     toString() {
-        return `<GoodItem ${this.id} ${this.title} ${this.price}>`
+        return `<GoodItem ${this.id_product} ${this.product_name} ${this.price}>`
     }
 
     render() {
         return `<div class="goods-item">
                 <div class="good-img"></div>
-                <h3>${this.title}</h3>
+                <h3>${this.product_name}</h3>
                 <p>${this.price}</p>
-                <button class="buy-button">Добавить</button>
+                <button data-id_product="${this.id_product}" class="buy-button">Добавить</button>
             </div>`;
     }
 }
 
 function main() {
-    let goodList = new GoodList()
+
+    // Привязываемся к модальному окну корзины 
+    const basketModal = document.getElementById("basket-modal");
+    const basketBtn = document.querySelector(".cart-button");
+
+    // при нажатии кнопки корзины
+    basketBtn.onclick = () => { basketModal.style.display = "block" }
+
+    window.onclick = (e) => {
+        if (e.target == basketModal) {
+            basketModal.style.display = "none";
+        }
+    }
+
+
+
+
+
+
     let basket = new Basket()
-
-    // Заполняем корзину
-    goodList.goodItems.forEach(item => {
-        basket.addGood(item)
-    })
-
-    console.log(`В корзине ${basket.getBasketSize()} товаров.`)
-    console.log(`В корзине товаров на сумму ${basket.getBasketTotalPrice()}`)
-
-    console.log(`Удаляем объект Socks`)
-
-    const itemToRemove = basket.getItemById(1)
-    console.log(`Нашли объект ${itemToRemove}`)
-    basket.removeGood(itemToRemove)
-
-    console.log(`В корзине ${basket.getBasketSize()} товаров.`)
-    console.log(`В корзине товаров на сумму ${basket.getBasketTotalPrice()}`)
+    let goodList = new GoodList(basket)
 }
 
 main()
